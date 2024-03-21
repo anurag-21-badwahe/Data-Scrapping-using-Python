@@ -1,54 +1,56 @@
-# import requests
-# from bs4 import BeautifulSoup
-
-# proxies = {
-#    "http": "http://38.154.227.167:3128",
-#     "https": "https://38.154.227.167:3128",
-# }
-
-# url = "http://results.ietdavv.edu.in/"
-# headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
-
-# try:
-#     req = requests.get(url,headers=headers)  # Timeout set to 10 seconds
-#     req.raise_for_status()  # Raise an exception for HTTP errors
-#     soup = BeautifulSoup(req.text, "html.parser")  # Corrected "html.parser"
-#     print(soup.prettify())
-# except requests.exceptions.RequestException as e:
-#     print("Error:", e)
-
-
 import requests
 from bs4 import BeautifulSoup
+import time
 
-proxies = {
-    "http": "http://115.240.90.163",
-    "https": "http://115.240.90.163",
+# Define the proxy
+proxy = {
+    "http": "http://180.183.157.159",
+    "https": "https://180.183.157.159",
 }
 
-url = "http://results.ietdavv.edu.in/"
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'
-}
+# Initialize an empty dictionary to store results
+results = {}
 
-# Generate a list of roll numbers from 21T51101 to 21T51170
-roll_numbers = ['21T511{:02d}'.format(i) for i in range(1, 71)]
+# Base URL of the website to scrape
+base_url = "http://results.ietdavv.edu.in/DisplayStudentResult?rollno={}&typeOfStudent=Regular"
 
-for roll_number in roll_numbers:
+# Loop through roll numbers
+for roll_number in range(2115101, 2115102):  # Assuming you want to scrape from 21T5101 to 21T5170
+    # Construct URL for the current roll number
+    url = base_url.format(roll_number)
+    print("Fetching data for URL:", url)  # Print the URL for debugging purposes
+    
     try:
-        # Submit a POST request with the roll number
-        payload = {'roll_number': roll_number}  # Adjust payload according to the form parameters
-        req = requests.post(url, headers=headers, proxies=proxies, data=payload)
-        req.raise_for_status()  # Raise an exception for HTTP errors
+        # Send an HTTP GET request to the website using the proxy
+        response = requests.get(url, proxies=proxy, verify=False)
         
-        # Parse the response HTML
-        soup = BeautifulSoup(req.text, "html.parser")
+        # Add a delay to avoid sending too many requests too quickly
+        time.sleep(1)
         
-        # Extract data from the response using BeautifulSoup
-        # Example: result = soup.find('div', {'class': 'result'}).text
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the HTML code using BeautifulSoup
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Find the required data and store it in the results dictionary
+            result = soup.find("font", color="#4B0082")
+            sgpa = soup.find("b")
+            
+            if result and sgpa:
+                # Store the result for the current roll number in the dictionary
+                results[roll_number] = {"Result": result.text, "SGPA": sgpa.text}
+            else:
+                print("Data not found for roll number:", roll_number)
         
-        # Print or store the extracted data
-        print(f"Data for roll number {roll_number}: {result}")
-        
-    except requests.exceptions.RequestException as e:
-        print("Error:", e)
+        else:
+            print("Failed to retrieve data for roll number:", roll_number)
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
+# Print the scraped results
+for roll_number, result_data in results.items():
+    print("Roll Number:", roll_number)
+    print("Result:", result_data["Result"])
+    print("SGPA:", result_data["SGPA"])
+    print()
